@@ -1,0 +1,56 @@
+name: NEXUS offload light batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      input_path:
+        description: "Repo-local input path. Do not use private corpus in this public repo."
+        required: true
+        default: "offload/sample_input"
+      mode:
+        description: "Batch mode"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - manifest
+          - split
+
+permissions:
+  contents: read
+
+jobs:
+  offload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Prepare outputs
+        run: mkdir -p offload/outputs/chunks
+
+      - name: Build manifest
+        if: ${{ inputs.mode == 'all' || inputs.mode == 'manifest' }}
+        run: python offload/scripts/manifest.py --input "${{ inputs.input_path }}" --output offload/outputs/manifest.jsonl
+
+      - name: Report duplicates
+        if: ${{ inputs.mode == 'all' || inputs.mode == 'manifest' }}
+        run: python offload/scripts/dedupe_manifest.py --manifest offload/outputs/manifest.jsonl --output offload/outputs/duplicates.md
+
+      - name: Split text for Google Docs
+        if: ${{ inputs.mode == 'all' || inputs.mode == 'split' }}
+        run: python offload/scripts/split_text_for_gdocs.py --input "${{ inputs.input_path }}" --output offload/outputs/chunks --max-chars 180000
+
+      - name: Upload safe workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-offload-output
+          path: offload/outputs
+          if-no-files-found: error
