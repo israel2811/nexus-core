@@ -13,6 +13,7 @@ Move heavy processing away from the local Windows laptop while keeping Google Dr
 - Drive control folder exists: https://drive.google.com/drive/folders/1wm14_jePx4DnGsqVjTcT6T6YRLRU0wIL
 - Public GitHub repo selected for executable offload scaffolding: https://github.com/israel2811/nexus-core
 - Codespaces should be used only for concrete resumable batches, not as a keepalive loop.
+- Offload scripts were tested against `offload/sample_input`: manifest, dedupe report, and one Google-Docs-sized chunk generated successfully.
 
 ## Active constraints
 
@@ -33,4 +34,6 @@ Move heavy processing away from the local Windows laptop while keeping Google Dr
 ## Current blockers
 
 - Claude Desktop has recently opened a window but exposed no readable UI text to Computer Use; do not depend on it until verified.
-- Antigravity has responded at least once in a clean temp workspace, but should be kept on small repo-local tasks until stable.
+- Antigravity IDE CLI responds (`Antigravity IDE 1.107.0`) and can open repo-local folders/files.
+- Antigravity agent UI remains unstable in this session: Computer Use text is empty, screenshots fail with `0x80004002`, and CDP prompt delivery did not complete reliably.
+- The canonical Antigravity prompt is stored at `offload/prompts/ANTIGRAVITY_OFFLOAD_SYNC.md`; use it once the agent panel accepts input again.
