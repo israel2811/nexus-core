@@ -15,6 +15,9 @@ on:
       - '.github/workflows/nexus-performance.yml'
       - 'scripts/nexus-run.ps1'
       - 'scripts/bootstrap_cloud_agents.sh'
+      - 'scripts/windows_speed_now.ps1'
+      - 'scripts/desktop_commander_singleton.ps1'
+      - 'scripts/e7470_passive_ata3_check.sh'
 
 permissions:
   contents: read
@@ -28,6 +31,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          $files=@('scripts/nexus-run.ps1','scripts/windows_speed_now.ps1','scripts/desktop_commander_singleton.ps1')
+          foreach($f in $files){
+            $tokens=$null; $errors=$null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f),[ref]$tokens,[ref]$errors)|Out-Null
+            if($errors){ $errors | Format-List; throw "PowerShell parse failed: $f" }
+            Write-Host "PARSE_OK $f"
+          }
+
+      - name: Validate shell syntax
+        shell: bash
+        run: |
+          bash -n scripts/bootstrap_cloud_agents.sh
+          bash -n scripts/e7470_passive_ata3_check.sh
 
       - name: Set up Python
         uses: actions/setup-python@v5
