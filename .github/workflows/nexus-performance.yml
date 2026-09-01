@@ -1,0 +1,81 @@
+name: NEXUS performance offload
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Safe cloud task"
+        required: true
+        default: "benchmark"
+        type: choice
+        options:
+          - benchmark
+          - tests
+          - inventory
+
+permissions:
+  contents: read
+
+jobs:
+  offload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: System inventory
+        if: ${{ inputs.mode == 'inventory' || inputs.mode == 'benchmark' }}
+        run: |
+          mkdir -p nexus-artifacts
+          nproc | tee nexus-artifacts/cpu-threads.txt
+          free -h | tee nexus-artifacts/memory.txt
+          df -h | tee nexus-artifacts/storage.txt
+          python --version | tee nexus-artifacts/python.txt
+          node --version | tee nexus-artifacts/node.txt
+
+      - name: CPU and memory benchmark
+        if: ${{ inputs.mode == 'benchmark' }}
+        run: |
+          python - <<'PY' | tee nexus-artifacts/benchmark.txt
+          import hashlib, time
+          block=b'x'*(1024*1024)
+          h=hashlib.sha256(); n=512
+          t=time.perf_counter()
+          for _ in range(n): h.update(block)
+          dt=time.perf_counter()-t
+          print('bytes=',n*len(block))
+          print('seconds=',round(dt,4))
+          print('MBps=',round(n/dt,1))
+          print('sha256=',h.hexdigest())
+          PY
+
+      - name: Repository tests
+        if: ${{ inputs.mode == 'tests' }}
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p nexus-artifacts
+          if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
+          if [ -f pyproject.toml ] || find . -maxdepth 3 -name 'test_*.py' -print -quit | grep -q .; then
+            python -m pytest 2>&1 | tee nexus-artifacts/pytest.txt
+          else
+            echo 'No Python tests detected.' | tee nexus-artifacts/pytest.txt
+          fi
+          if [ -f package.json ]; then
+            npm ci || npm install
+            npm test --if-present 2>&1 | tee nexus-artifacts/npm-test.txt
+          fi
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-performance-${{ inputs.mode }}
+          path: nexus-artifacts
+          if-no-files-found: warn
