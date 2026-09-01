@@ -16,6 +16,7 @@ on:
       - 'scripts/nexus-run.ps1'
       - 'scripts/bootstrap_cloud_agents.sh'
       - 'scripts/windows_speed_now.ps1'
+      - 'scripts/windows_recover_speed_bootstrap.ps1'
       - 'scripts/desktop_commander_singleton.ps1'
       - 'scripts/e7470_passive_ata3_check.sh'
 
@@ -35,7 +36,7 @@ jobs:
       - name: Validate PowerShell syntax
         shell: pwsh
         run: |
-          $files=@('scripts/nexus-run.ps1','scripts/windows_speed_now.ps1','scripts/desktop_commander_singleton.ps1')
+          $files=@('scripts/nexus-run.ps1','scripts/windows_speed_now.ps1','scripts/windows_recover_speed_bootstrap.ps1','scripts/desktop_commander_singleton.ps1')
           foreach($f in $files){
             $tokens=$null; $errors=$null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f),[ref]$tokens,[ref]$errors)|Out-Null
