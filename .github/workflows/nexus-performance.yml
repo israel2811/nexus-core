@@ -8,10 +8,13 @@ on:
         required: true
         default: "benchmark"
         type: choice
-        options:
-          - benchmark
-          - tests
-          - inventory
+        options: [benchmark, tests, inventory]
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/nexus-performance.yml'
+      - 'scripts/nexus-run.ps1'
+      - 'scripts/bootstrap_cloud_agents.sh'
 
 permissions:
   contents: read
@@ -20,6 +23,8 @@ jobs:
   offload:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'benchmark' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,12 +32,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
+
+      - name: Prepare artifacts
+        run: mkdir -p nexus-artifacts
 
       - name: System inventory
-        if: ${{ inputs.mode == 'inventory' || inputs.mode == 'benchmark' }}
+        if: ${{ env.MODE == 'inventory' || env.MODE == 'benchmark' }}
         run: |
-          mkdir -p nexus-artifacts
           nproc | tee nexus-artifacts/cpu-threads.txt
           free -h | tee nexus-artifacts/memory.txt
           df -h | tee nexus-artifacts/storage.txt
@@ -40,7 +47,7 @@ jobs:
           node --version | tee nexus-artifacts/node.txt
 
       - name: CPU and memory benchmark
-        if: ${{ inputs.mode == 'benchmark' }}
+        if: ${{ env.MODE == 'benchmark' }}
         run: |
           python - <<'PY' | tee nexus-artifacts/benchmark.txt
           import hashlib, time
@@ -56,11 +63,10 @@ jobs:
           PY
 
       - name: Repository tests
-        if: ${{ inputs.mode == 'tests' }}
+        if: ${{ env.MODE == 'tests' }}
         shell: bash
         run: |
           set -o pipefail
-          mkdir -p nexus-artifacts
           if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
           if [ -f pyproject.toml ] || find . -maxdepth 3 -name 'test_*.py' -print -quit | grep -q .; then
             python -m pytest 2>&1 | tee nexus-artifacts/pytest.txt
@@ -76,6 +82,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-performance-${{ inputs.mode }}
+          name: nexus-performance-${{ env.MODE }}
           path: nexus-artifacts
           if-no-files-found: warn
