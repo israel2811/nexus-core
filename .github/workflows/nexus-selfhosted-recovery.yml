@@ -1,0 +1,42 @@
+name: NEXUS self-hosted recovery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/nexus-selfhosted-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-recover:
+    runs-on: [self-hosted, Windows]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard target
+        shell: pwsh
+        run: |
+          Write-Host "HOST=$env:COMPUTERNAME"
+          if ($env:COMPUTERNAME -ne 'DESKTOP-BU2SSJM') { Write-Host 'Not target Windows; exiting.'; exit 0 }
+      - name: Apply speed and Desktop Commander singleton
+        if: ${{ success() }}
+        shell: pwsh
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-BU2SSJM') { exit 0 }
+          & .\scripts\windows_recover_speed_bootstrap.ps1
+
+  linux-passive-recovery:
+    runs-on: [self-hosted, Linux]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard target and passive ata3 check
+        shell: bash
+        run: |
+          set -eu
+          echo "HOST=$(hostname)"
+          [ "$(hostname)" = 'nexus-rescue' ] || { echo 'Not target Linux; exiting.'; exit 0; }
+          bash ./scripts/e7470_passive_ata3_check.sh
