@@ -29,8 +29,9 @@ function Invoke-Ssh([string]$Remote){
   if($LASTEXITCODE -ne 0){ throw "SSH fallo rc=$LASTEXITCODE" }
 }
 
-# Safety gate: Linux must explicitly verify a healthy persistent destination first.
-Invoke-Ssh "test -f '$VerifyMarker' || { echo 'NEXUS backup blocked: storage not verified' >&2; exit 70; }; test -d '$RemoteRoot' || { echo 'Backup root missing' >&2; exit 71; }; mountpoint -q \"$(df -P '$RemoteRoot' | awk 'NR==2{print $6}')\" || exit 72; test -w '$RemoteRoot' || exit 73; avail=$(df -Pk '$RemoteRoot' | awk 'NR==2{print $4}'); test \"$avail\" -gt 1048576 || exit 74"
+# Fail closed: Linux creates this marker only after verifying a healthy persistent target.
+# The backup script itself never creates the destination or the marker.
+Invoke-Ssh "test -f '$VerifyMarker' || { echo 'NEXUS backup blocked: storage not verified' >&2; exit 70; }; test -d '$RemoteRoot' || { echo 'Backup root missing' >&2; exit 71; }; test -w '$RemoteRoot' || { echo 'Backup root not writable' >&2; exit 72; }; df -h '$RemoteRoot'"
 
 function Send-Set([string]$Name,[string[]]$Items){
   $present=@($Items | Where-Object { Test-Path (Join-Path $HOME $_) })
