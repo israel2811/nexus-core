@@ -39,12 +39,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Parse PowerShell client
+      - name: Parse PowerShell files
         shell: pwsh
         run: |
-          $target = Resolve-Path 'infra/invisible-offload/nexus-offload/windows-client.ps1'
-          $tokens = $null
-          $errors = $null
-          [System.Management.Automation.Language.Parser]::ParseFile($target,[ref]$tokens,[ref]$errors) | Out-Null
-          if ($errors.Count) { $errors | Format-List | Out-String | Write-Error; exit 1 }
-          Write-Host 'PowerShell parse OK'
+          $targets = Get-ChildItem 'infra/invisible-offload' -Recurse -Filter *.ps1
+          foreach ($target in $targets) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($target.FullName,[ref]$tokens,[ref]$errors) | Out-Null
+            if ($errors.Count) { $errors | Format-List | Out-String | Write-Error; exit 1 }
+          }
+          Write-Host "Parsed $($targets.Count) PowerShell files"
