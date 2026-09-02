@@ -4,6 +4,8 @@ on:
     paths:
       - 'scripts/windows_keyboard_normalize.ps1'
       - 'scripts/windows_data_inventory.ps1'
+      - 'scripts/windows-backup-to-rescue.ps1'
+      - 'scripts/nexus-run.ps1'
       - 'scripts/nexus_computer_use.sh'
       - '.github/workflows/nexus-ops-validate.yml'
   workflow_dispatch:
@@ -15,7 +17,12 @@ jobs:
       - name: Parse PowerShell scripts
         shell: pwsh
         run: |
-          $files = @('scripts/windows_keyboard_normalize.ps1','scripts/windows_data_inventory.ps1')
+          $files = @(
+            'scripts/windows_keyboard_normalize.ps1',
+            'scripts/windows_data_inventory.ps1',
+            'scripts/windows-backup-to-rescue.ps1',
+            'scripts/nexus-run.ps1'
+          )
           foreach ($f in $files) {
             $tokens=$null; $errors=$null
             [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f),[ref]$tokens,[ref]$errors) | Out-Null
