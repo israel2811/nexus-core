@@ -1,0 +1,18 @@
+[Unit]
+Description=NEXUS invisible cloud offload broker
+After=network-online.target nexus-win-dc-bridge.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/nexus-offload.conf
+ExecStart=/usr/bin/python3 /opt/nexus-offload/broker.py
+Restart=always
+RestartSec=5
+Nice=10
+CPUWeight=25
+MemoryMax=96M
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
