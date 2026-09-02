@@ -1,151 +1,100 @@
-name: NEXUS Cloud Worker — Ejecución Autónoma
+name: NEXUS Cloud Worker — On Demand
 
 on:
   workflow_dispatch:
     inputs:
       task:
-        description: 'Tarea a ejecutar (python, diagnostico, audit, colab_prep)'
+        description: 'Tarea segura: diagnostico, audit_repo, colab_prep'
         required: true
         default: 'diagnostico'
-      payload:
-        description: 'Payload JSON opcional'
-        required: false
-        default: '{}'
-  schedule:
-    # Corre cada 6 horas automáticamente
-    - cron: '0 */6 * * *'
-  push:
-    branches: [main]
-    paths:
-      - 'nexus/**'
-      - '.github/workflows/**'
+        type: choice
+        options: [diagnostico, audit_repo, colab_prep]
+
+permissions:
+  contents: read
 
 jobs:
   nexus-worker:
-    name: NEXUS Autonomous Worker
     runs-on: ubuntu-latest
-    timeout-minutes: 55
-
+    timeout-minutes: 20
     steps:
-      - name: Checkout NEXUS Repo
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python 3.11
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: '3.12'
 
-      - name: Install Dependencies
+      - name: Prepare output
+        run: mkdir -p nexus_outputs
+
+      - name: Diagnostics
+        if: ${{ inputs.task == 'diagnostico' }}
+        shell: bash
         run: |
-          pip install --upgrade pip
-          pip install numpy pandas scipy scikit-learn matplotlib requests httpx aiohttp
-          pip install transformers torch --index-url https://download.pytorch.org/whl/cpu
-          echo "[OK] Dependencies installed"
-
-      - name: Run Diagnostics
-        if: github.event.inputs.task == 'diagnostico' || github.event_name == 'schedule'
-        run: |
-          python - <<'EOF'
-          import sys
-          import platform
-          import json
-          import time
-          import os
-
-          report = {
-              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC"),
-              "runner": {
-                  "os": platform.system(),
-                  "python": sys.version,
-                  "arch": platform.machine(),
-                  "cpus": os.cpu_count(),
-              },
-              "task": "diagnostico",
-              "status": "OK"
+          python - <<'PY'
+          import json, os, platform, shutil, time
+          r={
+            'timestamp':time.strftime('%Y-%m-%d %H:%M:%S UTC'),
+            'os':platform.platform(),
+            'python':platform.python_version(),
+            'cpus':os.cpu_count(),
+            'disk_free_gb':round(shutil.disk_usage('.').free/2**30,2),
           }
-          print(json.dumps(report, indent=2))
-          
-          # Save artifact
-          os.makedirs("nexus_outputs", exist_ok=True)
-          with open("nexus_outputs/diagnostico_cloud.json", "w") as f:
-              json.dump(report, f, indent=2)
-          print("[NEXUS-CLOUD] Diagnostico completado en runner remoto")
-          EOF
+          print(json.dumps(r,indent=2))
+          open('nexus_outputs/diagnostico_cloud.json','w').write(json.dumps(r,indent=2))
+          PY
 
-      - name: Run ML Anomaly Detection
-        if: github.event.inputs.task == 'audit' || github.event_name == 'schedule'
+      - name: Repository audit
+        if: ${{ inputs.task == 'audit_repo' }}
+        shell: bash
         run: |
-          python - <<'EOF'
-          import numpy as np
-          from sklearn.ensemble import IsolationForest
-          import json, time, os
+          python - <<'PY'
+          import hashlib, json, pathlib, time
+          root=pathlib.Path('.')
+          files=[]
+          for p in root.rglob('*'):
+            if not p.is_file() or '.git' in p.parts: continue
+            try:
+              b=p.read_bytes()
+            except OSError:
+              continue
+            files.append({'path':str(p),'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()})
+          r={'timestamp':time.strftime('%Y-%m-%d %H:%M:%S UTC'),'files':len(files),'total_bytes':sum(x['bytes'] for x in files)}
+          pathlib.Path('nexus_outputs/repo_inventory.json').write_text(json.dumps({'summary':r,'files':files},indent=2))
+          print(json.dumps(r,indent=2))
+          PY
 
-          # Genera datos simulados de sesión para detección de anomalías
-          np.random.seed(42)
-          n_normal = 200
-          n_anomaly = 10
-          
-          normal = np.random.randn(n_normal, 5) * np.array([10, 5, 100, 0.5, 50])
-          anomalies = np.random.randn(n_anomaly, 5) * np.array([100, 50, 1000, 5, 500])
-          X = np.vstack([normal, anomalies])
-          
-          clf = IsolationForest(contamination=0.05, random_state=42)
-          labels = clf.fit_predict(X)
-          
-          detected = int(np.sum(labels == -1))
-          scores = clf.decision_function(X)
-          
-          result = {
-              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC"),
-              "total_samples": len(X),
-              "anomalies_detected": detected,
-              "mean_score": float(np.mean(scores)),
-              "min_score": float(np.min(scores)),
-              "status": "OK"
-          }
-          
-          os.makedirs("nexus_outputs", exist_ok=True)
-          with open("nexus_outputs/ml_anomaly_cloud.json", "w") as f:
-              json.dump(result, f, indent=2)
-          print(f"[NEXUS-CLOUD] Anomalías detectadas: {detected} de {len(X)} muestras")
-          print(json.dumps(result, indent=2))
-          EOF
-
-      - name: Prepare Colab Environment
-        if: github.event.inputs.task == 'colab_prep'
+      - name: Prepare Colab handoff
+        if: ${{ inputs.task == 'colab_prep' }}
+        shell: bash
         run: |
-          echo "[NEXUS-CLOUD] Generando config para Colab..."
-          python - <<'EOF'
-          import json, os, time
-
-          colab_config = {
-              "nexus_version": "3.0",
-              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC"),
-              "gpu_required": True,
-              "packages": ["transformers", "torch", "accelerate", "bitsandbytes"],
-              "mount_drive": True,
-              "drive_base_path": "/content/drive/MyDrive",
-              "ready": True
+          python - <<'PY'
+          import json, pathlib, time
+          r={
+            'nexus_version':'3.1',
+            'timestamp':time.strftime('%Y-%m-%d %H:%M:%S UTC'),
+            'purpose':'large corpus / scientific compute handoff',
+            'storage':'Google Drive or explicit upload; never assume persistence',
+            'packages_core':['pandas','numpy','scipy'],
+            'packages_optional_ml':['transformers','torch'],
+            'ready':True,
           }
-          os.makedirs("nexus_outputs", exist_ok=True)
-          with open("nexus_outputs/colab_config.json", "w") as f:
-              json.dump(colab_config, f, indent=2)
-          print("[NEXUS-CLOUD] Colab config lista")
-          print(json.dumps(colab_config, indent=2))
-          EOF
+          pathlib.Path('nexus_outputs/colab_config.json').write_text(json.dumps(r,indent=2))
+          print(json.dumps(r,indent=2))
+          PY
 
-      - name: Upload NEXUS Outputs
+      - name: Upload outputs
         uses: actions/upload-artifact@v4
         with:
-          name: nexus-outputs-${{ github.run_id }}
+          name: nexus-outputs-${{ inputs.task }}-${{ github.run_id }}
           path: nexus_outputs/
-          retention-days: 30
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Summary
         run: |
-          echo "## ⚡ NEXUS Cloud Worker — Completado" >> $GITHUB_STEP_SUMMARY
-          echo "- **Fecha**: $(date)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tarea**: ${{ github.event.inputs.task || 'schedule' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Runner**: ubuntu-latest" >> $GITHUB_STEP_SUMMARY
-          echo "- **Outputs**: nexus_outputs/" >> $GITHUB_STEP_SUMMARY
+          echo '## NEXUS Cloud Worker' >> "$GITHUB_STEP_SUMMARY"
+          echo "- Task: ${{ inputs.task }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '- Mode: on-demand; no scheduled heavy dependencies' >> "$GITHUB_STEP_SUMMARY"
