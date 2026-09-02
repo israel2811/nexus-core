@@ -1,0 +1,48 @@
+name: nexus-offload-verify
+
+on:
+  push:
+    branches:
+      - nexus-invisible-offload-v1
+    paths:
+      - 'infra/invisible-offload/**'
+      - '.github/workflows/nexus-offload-verify.yml'
+      - '.github/workflows/nexus-invisible-offload.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexus-offload-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile broker
+        run: python -m py_compile infra/invisible-offload/nexus-offload/broker.py
+      - name: Shell syntax
+        run: bash -n infra/invisible-offload/nexus-offload/nexus-offload-reverse-tunnel.sh
+      - name: Cloudflare typecheck
+        working-directory: infra/invisible-offload/cloudflare/nexus-router
+        run: |
+          npm install --ignore-scripts
+          npm run typecheck
+
+  windows-verify:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell client
+        shell: pwsh
+        run: |
+          $target = Resolve-Path 'infra/invisible-offload/nexus-offload/windows-client.ps1'
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile($target,[ref]$tokens,[ref]$errors) | Out-Null
+          if ($errors.Count) { $errors | Format-List | Out-String | Write-Error; exit 1 }
+          Write-Host 'PowerShell parse OK'
