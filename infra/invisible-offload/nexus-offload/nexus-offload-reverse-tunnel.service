@@ -1,0 +1,17 @@
+[Unit]
+Description=NEXUS encrypted reverse tunnel for offload broker
+After=network-online.target nexus-win-dc-bridge.service nexus-offload-broker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/libexec/nexus/nexus-offload-reverse-tunnel.sh
+Restart=always
+RestartSec=5
+Nice=10
+CPUWeight=20
+MemoryMax=64M
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
