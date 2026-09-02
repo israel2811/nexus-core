@@ -22,8 +22,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Compile broker
-        run: python -m py_compile infra/invisible-offload/nexus-offload/broker.py
+      - name: Compile brokers
+        run: |
+          python -m py_compile infra/invisible-offload/nexus-offload/broker.py
+          python -m py_compile infra/invisible-offload/nexus-offload/broker_v5_low_impact.py
       - name: Shell syntax
         run: bash -n infra/invisible-offload/nexus-offload/nexus-offload-reverse-tunnel.sh
       - name: Cloudflare typecheck
