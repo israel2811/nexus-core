@@ -1,37 +1,40 @@
 name: NEXUS ops validate
+
 on:
   push:
     paths:
-      - 'scripts/windows_keyboard_normalize.ps1'
-      - 'scripts/windows_data_inventory.ps1'
-      - 'scripts/windows-backup-to-rescue.ps1'
-      - 'scripts/nexus-run.ps1'
-      - 'scripts/nexus_computer_use.sh'
+      - 'scripts/*.ps1'
+      - 'scripts/*.sh'
+      - '.devcontainer/*.sh'
       - '.github/workflows/nexus-ops-validate.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
-  powershell:
-    runs-on: windows-latest
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+
       - name: Parse PowerShell scripts
         shell: pwsh
         run: |
-          $files = @(
-            'scripts/windows_keyboard_normalize.ps1',
-            'scripts/windows_data_inventory.ps1',
-            'scripts/windows-backup-to-rescue.ps1',
-            'scripts/nexus-run.ps1'
-          )
-          foreach ($f in $files) {
+          $files=Get-ChildItem scripts -Filter '*.ps1' -File
+          foreach($f in $files){
             $tokens=$null; $errors=$null
-            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f),[ref]$tokens,[ref]$errors) | Out-Null
-            if ($errors.Count) { $errors | Format-List; throw "Parse failed: $f" }
-            Write-Host "OK $f"
+            [System.Management.Automation.Language.Parser]::ParseFile($f.FullName,[ref]$tokens,[ref]$errors)|Out-Null
+            if($errors){ $errors | Format-List; throw "Parse failed: $($f.FullName)" }
+            Write-Host "PARSE_OK $($f.Name)"
           }
-  shell:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Parse shell helper
-        run: bash -n scripts/nexus_computer_use.sh
+
+      - name: Parse shell scripts
+        shell: bash
+        run: |
+          set -e
+          find scripts .devcontainer -maxdepth 1 -type f -name '*.sh' -print0 | while IFS= read -r -d '' f; do
+            bash -n "$f"
+            echo "PARSE_OK $f"
+          done
