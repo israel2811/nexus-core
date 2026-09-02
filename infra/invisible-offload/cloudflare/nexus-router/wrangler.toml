@@ -1,0 +1,16 @@
+name = "nexus-router"
+main = "src/index.ts"
+compatibility_date = "2026-09-02"
+workers_dev = true
+
+# Create NEXUS_API_KEY as a Wrangler secret; never put its value here.
+# wrangler secret put NEXUS_API_KEY
+
+# Bind only after the Cloudflare account exposes write-capable tooling.
+# [[queues.producers]]
+# binding = "NEXUS_JOBS"
+# queue = "nexus-jobs"
+
+# [[r2_buckets]]
+# binding = "NEXUS_CACHE"
+# bucket_name = "nexus-offload-cache"
