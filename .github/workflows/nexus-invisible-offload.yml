@@ -1,0 +1,84 @@
+name: nexus-invisible-offload
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: Restricted NEXUS cloud task
+        required: true
+        default: repo-inventory
+        type: choice
+        options:
+          - repo-inventory
+          - python-smoke
+          - node-smoke
+          - powershell-smoke
+          - source-archive
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nexus-offload-${{ github.ref }}-${{ inputs.task }}
+  cancel-in-progress: false
+
+jobs:
+  linux:
+    if: ${{ inputs.task != 'powershell-smoke' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Repository inventory
+        if: ${{ inputs.task == 'repo-inventory' }}
+        run: |
+          mkdir -p artifacts
+          find . -type f -not -path './.git/*' -not -path '*/node_modules/*' -printf '%s\t%p\n' \
+            | sort -nr > artifacts/repo-inventory.tsv
+
+      - name: Python broker smoke
+        if: ${{ inputs.task == 'python-smoke' }}
+        run: |
+          python --version
+          python -m py_compile infra/invisible-offload/nexus-offload/broker.py
+
+      - name: Cloudflare router typecheck
+        if: ${{ inputs.task == 'node-smoke' }}
+        working-directory: infra/invisible-offload/cloudflare/nexus-router
+        run: |
+          node --version
+          npm --version
+          npm install --ignore-scripts
+          npm run typecheck
+
+      - name: Source archive
+        if: ${{ inputs.task == 'source-archive' }}
+        run: |
+          mkdir -p artifacts
+          git archive --format=zip --output=artifacts/source.zip HEAD
+
+      - name: Upload artifacts
+        if: ${{ inputs.task == 'repo-inventory' || inputs.task == 'source-archive' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-${{ inputs.task }}
+          path: artifacts/
+          retention-days: 7
+
+  windows:
+    if: ${{ inputs.task == 'powershell-smoke' }}
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse Windows client
+        shell: pwsh
+        run: |
+          $target = Resolve-Path 'infra/invisible-offload/nexus-offload/windows-client.ps1'
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            $target,[ref]$tokens,[ref]$errors) | Out-Null
+          if ($errors.Count) { $errors | Format-List | Out-String | Write-Error; exit 1 }
+          Write-Host 'PowerShell parse OK'
