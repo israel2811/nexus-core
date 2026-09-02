@@ -1,0 +1,151 @@
+name: NEXUS Cloud Worker — Ejecución Autónoma
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Tarea a ejecutar (python, diagnostico, audit, colab_prep)'
+        required: true
+        default: 'diagnostico'
+      payload:
+        description: 'Payload JSON opcional'
+        required: false
+        default: '{}'
+  schedule:
+    # Corre cada 6 horas automáticamente
+    - cron: '0 */6 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'nexus/**'
+      - '.github/workflows/**'
+
+jobs:
+  nexus-worker:
+    name: NEXUS Autonomous Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+
+    steps:
+      - name: Checkout NEXUS Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install numpy pandas scipy scikit-learn matplotlib requests httpx aiohttp
+          pip install transformers torch --index-url https://download.pytorch.org/whl/cpu
+          echo "[OK] Dependencies installed"
+
+      - name: Run Diagnostics
+        if: github.event.inputs.task == 'diagnostico' || github.event_name == 'schedule'
+        run: |
+          python - <<'EOF'
+          import sys
+          import platform
+          import json
+          import time
+          import os
+
+          report = {
+              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC"),
+              "runner": {
+                  "os": platform.system(),
+                  "python": sys.version,
+                  "arch": platform.machine(),
+                  "cpus": os.cpu_count(),
+              },
+              "task": "diagnostico",
+              "status": "OK"
+          }
+          print(json.dumps(report, indent=2))
+          
+          # Save artifact
+          os.makedirs("nexus_outputs", exist_ok=True)
+          with open("nexus_outputs/diagnostico_cloud.json", "w") as f:
+              json.dump(report, f, indent=2)
+          print("[NEXUS-CLOUD] Diagnostico completado en runner remoto")
+          EOF
+
+      - name: Run ML Anomaly Detection
+        if: github.event.inputs.task == 'audit' || github.event_name == 'schedule'
+        run: |
+          python - <<'EOF'
+          import numpy as np
+          from sklearn.ensemble import IsolationForest
+          import json, time, os
+
+          # Genera datos simulados de sesión para detección de anomalías
+          np.random.seed(42)
+          n_normal = 200
+          n_anomaly = 10
+          
+          normal = np.random.randn(n_normal, 5) * np.array([10, 5, 100, 0.5, 50])
+          anomalies = np.random.randn(n_anomaly, 5) * np.array([100, 50, 1000, 5, 500])
+          X = np.vstack([normal, anomalies])
+          
+          clf = IsolationForest(contamination=0.05, random_state=42)
+          labels = clf.fit_predict(X)
+          
+          detected = int(np.sum(labels == -1))
+          scores = clf.decision_function(X)
+          
+          result = {
+              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC"),
+              "total_samples": len(X),
+              "anomalies_detected": detected,
+              "mean_score": float(np.mean(scores)),
+              "min_score": float(np.min(scores)),
+              "status": "OK"
+          }
+          
+          os.makedirs("nexus_outputs", exist_ok=True)
+          with open("nexus_outputs/ml_anomaly_cloud.json", "w") as f:
+              json.dump(result, f, indent=2)
+          print(f"[NEXUS-CLOUD] Anomalías detectadas: {detected} de {len(X)} muestras")
+          print(json.dumps(result, indent=2))
+          EOF
+
+      - name: Prepare Colab Environment
+        if: github.event.inputs.task == 'colab_prep'
+        run: |
+          echo "[NEXUS-CLOUD] Generando config para Colab..."
+          python - <<'EOF'
+          import json, os, time
+
+          colab_config = {
+              "nexus_version": "3.0",
+              "timestamp": time.strftime("%Y-%m-%d %H:%M:%S UTC"),
+              "gpu_required": True,
+              "packages": ["transformers", "torch", "accelerate", "bitsandbytes"],
+              "mount_drive": True,
+              "drive_base_path": "/content/drive/MyDrive",
+              "ready": True
+          }
+          os.makedirs("nexus_outputs", exist_ok=True)
+          with open("nexus_outputs/colab_config.json", "w") as f:
+              json.dump(colab_config, f, indent=2)
+          print("[NEXUS-CLOUD] Colab config lista")
+          print(json.dumps(colab_config, indent=2))
+          EOF
+
+      - name: Upload NEXUS Outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-outputs-${{ github.run_id }}
+          path: nexus_outputs/
+          retention-days: 30
+
+      - name: Summary
+        run: |
+          echo "## ⚡ NEXUS Cloud Worker — Completado" >> $GITHUB_STEP_SUMMARY
+          echo "- **Fecha**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tarea**: ${{ github.event.inputs.task || 'schedule' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Runner**: ubuntu-latest" >> $GITHUB_STEP_SUMMARY
+          echo "- **Outputs**: nexus_outputs/" >> $GITHUB_STEP_SUMMARY
