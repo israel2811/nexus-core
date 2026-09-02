@@ -1,0 +1,44 @@
+# NEXUS SSH router - Windows-safe, privacy-first
+Host *
+    ServerAliveInterval 15
+    ServerAliveCountMax 4
+    TCPKeepAlive yes
+    Compression no
+    ForwardAgent no
+
+# GitHub SSH is optional. Register the PUBLIC key in the intended GitHub account first.
+Host github.com *.github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+    StrictHostKeyChecking accept-new
+
+Host github-ssh443
+    HostName ssh.github.com
+    Port 443
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+    IdentitiesOnly yes
+    StrictHostKeyChecking accept-new
+
+Host colab
+    HostName %h.trycloudflare.com
+    User root
+    ProxyCommand cloudflared access tcp --hostname %h
+    StrictHostKeyChecking accept-new
+
+Host *.replit.dev
+    StrictHostKeyChecking accept-new
+    ForwardAgent no
+
+# Manual rescue-worker alias. Automatic broker traffic uses the reverse SSH tunnel.
+Host sysrescue-offload
+    HostName <NEXUS_RESCUE_IP>
+    User root
+    IdentityFile <NEXUS_OFFLOAD_KEY_PATH>
+    IdentitiesOnly yes
+    StrictHostKeyChecking accept-new
+    ServerAliveInterval 15
+    ServerAliveCountMax 3
+    Compression no
+    ConnectTimeout 6
