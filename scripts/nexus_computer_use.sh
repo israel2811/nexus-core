@@ -2,6 +2,13 @@
 set -euo pipefail
 export DISPLAY="${DISPLAY:-:0}"
 export XAUTHORITY="${XAUTHORITY:-/root/.Xauthority}"
+if [[ -z "${XAUTHLOCALHOSTNAME:-}" ]]; then
+  auth_file="$(ps -eo args | sed -n 's/.*[X]org .* -auth \([^ ]*\).*/\1/p' | head -1)"
+  if [[ -n "$auth_file" && -r "$auth_file" ]]; then
+    auth_host="$(xauth -f "$auth_file" list 2>/dev/null | awk 'NR==1{split($1,a,"/"); print a[1]}')"
+    [[ -n "$auth_host" ]] && export XAUTHLOCALHOSTNAME="$auth_host"
+  fi
+fi
 outdir="${NEXUS_CU_DIR:-/run/nexus-computer-use}"
 mkdir -p "$outdir"
 cmd="${1:-status}"
@@ -9,6 +16,7 @@ case "$cmd" in
   status)
     echo "DISPLAY=$DISPLAY"
     echo "XAUTHORITY=$XAUTHORITY"
+    echo "XAUTHLOCALHOSTNAME=${XAUTHLOCALHOSTNAME:-}"
     xdotool getactivewindow getwindowname
     ;;
   screenshot)
