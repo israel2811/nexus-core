@@ -1,0 +1,30 @@
+name: NEXUS ops validate
+on:
+  push:
+    paths:
+      - 'scripts/windows_keyboard_normalize.ps1'
+      - 'scripts/windows_data_inventory.ps1'
+      - 'scripts/nexus_computer_use.sh'
+      - '.github/workflows/nexus-ops-validate.yml'
+  workflow_dispatch:
+jobs:
+  powershell:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          $files = @('scripts/windows_keyboard_normalize.ps1','scripts/windows_data_inventory.ps1')
+          foreach ($f in $files) {
+            $tokens=$null; $errors=$null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $f),[ref]$tokens,[ref]$errors) | Out-Null
+            if ($errors.Count) { $errors | Format-List; throw "Parse failed: $f" }
+            Write-Host "OK $f"
+          }
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse shell helper
+        run: bash -n scripts/nexus_computer_use.sh
