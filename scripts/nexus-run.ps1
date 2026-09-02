@@ -73,7 +73,7 @@ if($Backend -in @('auto','linux')){
     if($rc -eq 0){ Write-Host "[NEXUS] backend=LINUX_LAN ip=$ip"; exit 0 }
   }
   $relay=Resolve-RelayIPv4
-  Write-Host "[NEXUS] Linux relay $relay:$RelayPort"
+  Write-Host "[NEXUS] Linux relay ${relay}:$RelayPort"
   $rc=Invoke-NexusSsh $relay $RelayPort $remote $RelayHost
   if($rc -eq 0){ Write-Host '[NEXUS] backend=LINUX_RELAY'; exit 0 }
   if($Backend -eq 'linux'){ exit 69 }
