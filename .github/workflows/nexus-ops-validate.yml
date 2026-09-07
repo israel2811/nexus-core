@@ -38,3 +38,5 @@ jobs:
             bash -n "$f"
             echo "PARSE_OK $f"
           done
+
+# NEXUS cloud-runner smoke marker 2026-09-06
