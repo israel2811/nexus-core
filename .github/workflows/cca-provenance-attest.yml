@@ -1,0 +1,27 @@
+name: CCA Provenance Attestation
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'provenance/CCA_AUTHORSHIP_VAULT_ROOT_V1.txt'
+      - '.github/workflows/cca-provenance-attest.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  attest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate GitHub/Sigstore provenance attestation
+        uses: actions/attest@v4
+        with:
+          subject-path: provenance/CCA_AUTHORSHIP_VAULT_ROOT_V1.txt

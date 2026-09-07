@@ -1,0 +1,7 @@
+CCA_AUTHORSHIP_VAULT_ROOT_V1
+generated_utc=2026-09-07T06:52:39.4406236Z
+file_count=54
+root_sha256=b8aa294ca986e462e208656d6ce132c4a595de7afe377de5554a7c8534f19b8a
+manifest_sha256=b6c54d012c496e9ae173415c1375ca731c911f0e754f7527548d9a9e9c6bbef3
+
+This file intentionally contains cryptographic digests only. It does not disclose the underlying private research corpus.
