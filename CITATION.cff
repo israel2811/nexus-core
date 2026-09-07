@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use material from this repository, cite this repository and the relevant version or commit."
+title: "NEXUS Core / CCA Research Provenance Repository"
+type: software
+authors:
+  - family-names: "Realivázquez Mancillas"
+    given-names: "Israel"
+repository-code: "https://github.com/israel2811/nexus-core"
+version: "cca-priority-2026-09-07-v1"
+date-released: "2026-09-07"
