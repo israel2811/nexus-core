@@ -1,0 +1,31 @@
+name: NEXUS Capability Bus Validate
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'AGENTS.md'
+      - 'NEXUS_MULTI_AI_BRIEF.md'
+      - 'configs/nexus-capabilities.public.json'
+      - 'scripts/validate_nexus_capability_bus.py'
+      - '.github/workflows/nexus-capability-bus-validate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'AGENTS.md'
+      - 'NEXUS_MULTI_AI_BRIEF.md'
+      - 'configs/nexus-capabilities.public.json'
+      - 'scripts/validate_nexus_capability_bus.py'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python scripts/validate_nexus_capability_bus.py

@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Sanitized capability registry for NEXUS multi-AI routing",
+  "private_context": {
+    "system": "Google Drive",
+    "document_title": "NEXUS_CONTINUIDAD_MULTI_IA_MASTER",
+    "contains_credentials": false
+  },
+  "workers": {
+    "desktop_commander": ["shell", "files", "processes", "local-analysis"],
+    "computer_use": ["gui", "click", "type", "visual-inspection"],
+    "browser_automation": ["playwright", "chrome-devtools", "dom"],
+    "github": ["repos", "issues", "pull-requests", "actions", "codespaces"],
+    "codex": ["coding", "agents", "repository-work"],
+    "claude_code": ["coding", "mcp", "repository-work"],
+    "gemini": ["cli", "research", "repository-work"],
+    "jules": ["autonomous-repository-task"],
+    "replit": ["prototype", "agent-app"],
+    "render": ["deploy", "logs", "service"],
+    "neon": ["postgres", "branching"],
+    "supabase": ["postgres", "storage", "functions"]
+  },
+  "prohibited_shared_data": [
+    "passwords", "cookies", "oauth_tokens", "api_keys", "browser_session_values"
+  ],
+  "required_completion_fields": ["changes", "tests", "evidence", "risks", "next_action"]
+}
