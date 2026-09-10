@@ -20,6 +20,9 @@ if [ -f ".env" ]; then
 fi
 
 python3 scripts/auto_restore.py --dry-run >/dev/null 2>&1 || true
+if [ -f "scripts/validate_nexus_capability_bus.py" ]; then
+  python3 scripts/validate_nexus_capability_bus.py
+fi
 chmod +x scripts/codespace_runtime.sh 2>/dev/null || true
 bash scripts/codespace_runtime.sh || true
 
