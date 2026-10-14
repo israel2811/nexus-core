@@ -24,9 +24,13 @@ if ! ss -ltn 2>/dev/null | grep -q ':6080 '; then
     pgrep -f 'Xvfb :1' >/dev/null 2>&1 || nohup Xvfb :1 -screen 0 1600x900x24 -nolisten tcp >/tmp/nexus-xvfb.log 2>&1 &
     sleep 1
     pgrep -x fluxbox >/dev/null 2>&1 || nohup fluxbox >/tmp/nexus-fluxbox.log 2>&1 &
-    pgrep -f 'x11vnc.*5901' >/dev/null 2>&1 || nohup x11vnc -display :1 -forever -shared -nopw -rfbport 5901 >/tmp/nexus-x11vnc.log 2>&1 &
-    if ! ss -ltn 2>/dev/null | grep -q ':6080 '; then
-      nohup websockify --web=/usr/share/novnc 6080 localhost:5901 >/tmp/nexus-novnc.log 2>&1 &
+    if [ -s "$HOME/.vnc/passwd" ]; then
+      pgrep -f 'x11vnc.*5901' >/dev/null 2>&1 || nohup x11vnc -display :1 -forever -shared -rfbauth "$HOME/.vnc/passwd" -localhost -rfbport 5901 >/tmp/nexus-x11vnc.log 2>&1 &
+      if ! ss -ltn 2>/dev/null | grep -q ':6080 '; then
+        nohup websockify --web=/usr/share/novnc 127.0.0.1:6080 localhost:5901 >/tmp/nexus-novnc.log 2>&1 &
+      fi
+    else
+      log 'VNC authentication file missing: graphical fallback stays disabled'
     fi
   fi
 fi
