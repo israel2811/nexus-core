@@ -1,25 +1,50 @@
 {
   "name": "Nexus Core",
   "image": "mcr.microsoft.com/devcontainers/universal:2",
-  "runArgs": ["--shm-size=1g"],
+  "runArgs": [
+    "--shm-size=1g"
+  ],
   "features": {
-    "ghcr.io/devcontainers/features/node:1": {"version": "20"},
-    "ghcr.io/devcontainers/features/python:1": {"version": "3.11"},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers/features/sshd:1": {"version": "latest"},
+    "ghcr.io/devcontainers/features/sshd:1": {
+      "version": "latest"
+    },
     "ghcr.io/devcontainers/features/desktop-lite:1": {
       "webPort": "6080",
       "vncPort": "5901"
     }
   },
   "postCreateCommand": "bash .devcontainer/setup.sh",
-  "forwardPorts": [5678, 6080, 8080, 8384],
+  "forwardPorts": [
+    5678,
+    6080,
+    8080,
+    8384
+  ],
   "portsAttributes": {
-    "6080": {"label": "NEXUS Cloud Desktop", "onAutoForward": "silent"}
+    "5901": {
+      "label": "Private VNC (localhost only)",
+      "onAutoForward": "ignore",
+      "visibility": "private"
+    },
+    "6080": {
+      "label": "NEXUS Cloud Desktop — private",
+      "onAutoForward": "silent",
+      "visibility": "private"
+    }
   },
   "customizations": {
     "vscode": {
-      "extensions": ["ms-python.python", "dbaeumer.vscode-eslint"]
+      "extensions": [
+        "ms-python.python",
+        "dbaeumer.vscode-eslint"
+      ]
     }
   }
 }
