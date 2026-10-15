@@ -30,4 +30,4 @@ Never copy authentication material or private browser/session databases into thi
 - Replit/Render: deployable prototypes/services.
 - Neon/Supabase: structured state/data when needed.
 
-See `configs/nexus-capabilities.public.json` for the sanitized machine-readable registry.
+See `configs/nexus-capabilities.public.json` for the sanitized machine-readable registry and `MULTI_AI_HANDOFF.md` for the unified multi-agent continuity protocol.
